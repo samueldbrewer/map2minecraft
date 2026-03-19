@@ -18,6 +18,7 @@ use std::time::Duration;
 fn download_with_reqwest(url: &str, query: &str) -> Result<String, Box<dyn std::error::Error>> {
     let client: Client = ClientBuilder::new()
         .timeout(Duration::from_secs(360))
+        .user_agent("Map2Minecraft/1.0 (https://map2minecraft.up.railway.app)")
         .build()?;
 
     let response: Result<reqwest::blocking::Response, reqwest::Error> =
@@ -167,7 +168,8 @@ pub fn fetch_data_from_overpass(
     {
         // Fetch data from Overpass API
         let mut attempt = 0;
-        let max_attempts = 1;
+        let max_attempts = 3;
+        let all_servers: Vec<&str> = api_servers.iter().chain(fallback_api_servers.iter()).copied().collect();
         let response: String = loop {
             println!("Downloading from {url} with method {download_method}...");
             let result = match download_method {
@@ -184,8 +186,8 @@ pub fn fetch_data_from_overpass(
                         return Err(error);
                     }
 
-                    println!("Request failed. Switching to fallback url...");
-                    url = fallback_api_servers.choose(&mut rand::rng()).unwrap();
+                    println!("Request failed (attempt {}/{}). Trying another server...", attempt + 1, max_attempts + 1);
+                    url = all_servers.get((attempt + 1) % all_servers.len()).unwrap_or(&all_servers[0]);
                     attempt += 1;
                 }
             }
