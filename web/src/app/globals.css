@@ -1,0 +1,19 @@
+@import "tailwindcss";
+@import "maplibre-gl/dist/maplibre-gl.css";
+
+:root {
+  --grass-green: #5B8C3E;
+  --dark: #3B3B3B;
+  --light-bg: #F5F5F0;
+  --earth-brown: #8B6914;
+  --sky-blue: #87CEEB;
+}
+
+body {
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+.maplibregl-map {
+  width: 100%;
+  height: 100%;
+}

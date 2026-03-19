@@ -41,6 +41,14 @@ Thumbs.db
 flake/
 gen/
 
+# Web frontend
+web/node_modules/
+web/.next/
+web/.env.local
+
+# Data directory
+/data/
+
 # Miscellaneous
 *.bak
 *.old

@@ -1,0 +1,60 @@
+# Multi-stage build for the Rust worker service
+FROM rust:1.82-bookworm AS builder
+
+WORKDIR /app
+
+# Install system dependencies for building
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    cmake \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy workspace manifests first for better layer caching
+COPY Cargo.toml ./
+COPY crates/arnis-core/Cargo.toml crates/arnis-core/
+COPY crates/arnis-worker/Cargo.toml crates/arnis-worker/
+
+# Create dummy source files to build dependencies
+RUN mkdir -p crates/arnis-core/src && \
+    echo "pub fn dummy() {}" > crates/arnis-core/src/lib.rs && \
+    mkdir -p crates/arnis-worker/src && \
+    echo "fn main() {}" > crates/arnis-worker/src/main.rs
+
+# Copy the build.rs for arnis-core
+COPY crates/arnis-core/build.rs crates/arnis-core/
+
+# Build dependencies only (cached layer)
+RUN cargo build --release -p arnis-worker 2>/dev/null || true
+
+# Now copy actual source code
+COPY crates/arnis-core/src crates/arnis-core/src
+COPY crates/arnis-core/build.rs crates/arnis-core/build.rs
+
+COPY crates/arnis-worker/src crates/arnis-worker/src
+
+# Touch source files to invalidate cache
+RUN touch crates/arnis-core/src/lib.rs crates/arnis-worker/src/main.rs
+
+# Build the worker
+RUN cargo build --release -p arnis-worker
+
+# Runtime stage
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl3 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create data directory for world files
+RUN mkdir -p /data/worlds
+
+COPY --from=builder /app/target/release/arnis-worker /usr/local/bin/arnis-worker
+
+ENV DATA_DIR=/data/worlds
+ENV RUST_LOG=arnis_worker=info,tower_http=info
+
+EXPOSE 8080
+
+CMD ["arnis-worker"]
