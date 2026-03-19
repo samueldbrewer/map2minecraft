@@ -1,5 +1,5 @@
 # Multi-stage build for the Rust worker service
-FROM rust:1.82-bookworm AS builder
+FROM rust:1-bookworm AS builder
 
 WORKDIR /app
 
@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -y \
     cmake \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy workspace manifests first for better layer caching
-COPY Cargo.toml ./
+# Copy workspace manifests and lock file first for better layer caching
+COPY Cargo.toml Cargo.lock ./
 COPY crates/arnis-core/Cargo.toml crates/arnis-core/
 COPY crates/arnis-worker/Cargo.toml crates/arnis-worker/
 
@@ -27,9 +27,11 @@ COPY crates/arnis-core/build.rs crates/arnis-core/
 # Build dependencies only (cached layer)
 RUN cargo build --release -p arnis-worker 2>/dev/null || true
 
-# Now copy actual source code
+# Now copy actual source code and assets
 COPY crates/arnis-core/src crates/arnis-core/src
 COPY crates/arnis-core/build.rs crates/arnis-core/build.rs
+COPY crates/arnis-core/assets crates/arnis-core/assets
+COPY crates/arnis-core/tests crates/arnis-core/tests
 
 COPY crates/arnis-worker/src crates/arnis-worker/src
 
