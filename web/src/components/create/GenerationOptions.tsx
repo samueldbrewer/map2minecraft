@@ -1,8 +1,8 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import type { BBox, GenerationOptions as GenOpts } from "@/lib/store";
 import { formatArea, getPriceTier } from "@/lib/utils";
+import MiniMap from "@/components/map/MiniMap";
 
 interface Props {
   bbox: BBox;
@@ -12,15 +12,6 @@ interface Props {
   onBack: () => void;
   onGenerate: () => void;
 }
-
-const MiniMap = dynamic(() => import("@/components/map/MiniMap"), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-sm">
-      Loading map...
-    </div>
-  ),
-});
 
 export function GenerationOptions({ bbox, areaKm2, options, onChange, onBack, onGenerate }: Props) {
   const tier = getPriceTier(areaKm2);

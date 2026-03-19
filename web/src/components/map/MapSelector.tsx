@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import dynamic from "next/dynamic";
 import { Search, RotateCcw } from "lucide-react";
 import type { BBox } from "@/lib/store";
 import { formatArea } from "@/lib/utils";
+import MapInner from "./MapInner";
 
 interface Props {
   onSelect: (bbox: BBox, areaKm2: number) => void;
@@ -20,16 +20,6 @@ function calcArea(bounds: BBox): number {
   const height = R * dLat;
   return Math.abs(width * height);
 }
-
-// MapLibre map component loaded only on the client side (no SSR)
-const MapInner = dynamic(() => import("./MapInner"), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[500px] bg-gray-100 flex items-center justify-center text-gray-400">
-      Loading map...
-    </div>
-  ),
-});
 
 export function MapSelector({ onSelect }: Props) {
   const [currentBbox, setCurrentBbox] = useState<BBox | null>(null);
