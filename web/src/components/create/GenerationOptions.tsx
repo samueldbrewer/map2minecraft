@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import type { BBox, GenerationOptions as GenOpts } from "@/lib/store";
 import { formatArea, getPriceTier } from "@/lib/utils";
 
@@ -10,6 +11,86 @@ interface Props {
   onChange: (opts: Partial<GenOpts>) => void;
   onBack: () => void;
   onGenerate: () => void;
+}
+
+function MiniMap({ bbox }: { bbox: BBox }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return;
+
+    import("maplibre-gl").then((maplibregl) => {
+      const map = new maplibregl.default.Map({
+        container: containerRef.current!,
+        style: {
+          version: 8,
+          sources: {
+            osm: {
+              type: "raster",
+              tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+              tileSize: 256,
+              attribution: "&copy; OpenStreetMap",
+            },
+          },
+          layers: [{ id: "osm", type: "raster", source: "osm" }],
+        },
+        center: [(bbox.minLng + bbox.maxLng) / 2, (bbox.minLat + bbox.maxLat) / 2],
+        zoom: 12,
+        interactive: false,
+        attributionControl: false,
+      });
+
+      map.on("load", () => {
+        map.addSource("area", {
+          type: "geojson",
+          data: {
+            type: "FeatureCollection",
+            features: [{
+              type: "Feature",
+              properties: {},
+              geometry: {
+                type: "Polygon",
+                coordinates: [[
+                  [bbox.minLng, bbox.minLat],
+                  [bbox.maxLng, bbox.minLat],
+                  [bbox.maxLng, bbox.maxLat],
+                  [bbox.minLng, bbox.maxLat],
+                  [bbox.minLng, bbox.minLat],
+                ]],
+              },
+            }],
+          },
+        });
+        map.addLayer({
+          id: "area-fill",
+          type: "fill",
+          source: "area",
+          paint: { "fill-color": "#5B8C3E", "fill-opacity": 0.2 },
+        });
+        map.addLayer({
+          id: "area-border",
+          type: "line",
+          source: "area",
+          paint: { "line-color": "#5B8C3E", "line-width": 2 },
+        });
+
+        map.fitBounds(
+          [[bbox.minLng, bbox.minLat], [bbox.maxLng, bbox.maxLat]],
+          { padding: 30, duration: 0 }
+        );
+      });
+
+      mapRef.current = map;
+    });
+
+    return () => {
+      mapRef.current?.remove();
+      mapRef.current = null;
+    };
+  }, [bbox]);
+
+  return <div ref={containerRef} className="w-full h-48 rounded-lg" />;
 }
 
 export function GenerationOptions({ bbox, areaKm2, options, onChange, onBack, onGenerate }: Props) {
@@ -23,8 +104,8 @@ export function GenerationOptions({ bbox, areaKm2, options, onChange, onBack, on
       </p>
 
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 space-y-6">
-        {/* Area info */}
-        <div className="bg-[#F5F5F0] rounded-lg p-4">
+        {/* Area info with mini map */}
+        <div className="bg-[#F5F5F0] rounded-lg p-4 space-y-3">
           <div className="flex justify-between items-center">
             <div>
               <div className="text-sm text-gray-500">Selected Area</div>
@@ -35,7 +116,10 @@ export function GenerationOptions({ bbox, areaKm2, options, onChange, onBack, on
               <div className="font-bold text-[#5B8C3E] text-xl">${tier.price}</div>
             </div>
           </div>
-          <div className="text-xs text-gray-400 mt-2">
+          <div className="overflow-hidden rounded-lg border border-gray-200">
+            <MiniMap bbox={bbox} />
+          </div>
+          <div className="text-xs text-gray-400">
             {bbox.minLat.toFixed(4)}, {bbox.minLng.toFixed(4)} &rarr; {bbox.maxLat.toFixed(4)}, {bbox.maxLng.toFixed(4)}
           </div>
         </div>

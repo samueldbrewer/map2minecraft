@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAppStore } from "@/lib/store";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
 
 interface Props {
   jobId: string;
@@ -13,6 +13,7 @@ interface Props {
 export function GenerationProgress({ jobId, onComplete, onError }: Props) {
   const { progress, setProgress, progressMessage, setProgressMessage } = useAppStore();
   const eventSourceRef = useRef<EventSource | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const es = new EventSource(`/api/status/${jobId}`);
@@ -29,8 +30,10 @@ export function GenerationProgress({ jobId, onComplete, onError }: Props) {
           onComplete();
         } else if (data.status === "failed") {
           es.close();
-          setProgressMessage(data.error || "Generation failed");
-          setTimeout(onError, 2000);
+          const errorMsg = data.error || "Generation failed. Please try again.";
+          setError(errorMsg);
+          setProgressMessage(errorMsg);
+          setTimeout(onError, 3000);
         }
       } catch (e) {
         console.error("SSE parse error:", e);
@@ -39,12 +42,25 @@ export function GenerationProgress({ jobId, onComplete, onError }: Props) {
 
     es.onerror = () => {
       es.close();
+      setError("Connection lost. Please try again.");
+      setTimeout(onError, 3000);
     };
 
     return () => {
       es.close();
     };
   }, [jobId, onComplete, onError, setProgress, setProgressMessage]);
+
+  if (error) {
+    return (
+      <div className="max-w-lg mx-auto text-center py-12">
+        <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-6" />
+        <h1 className="text-2xl font-bold mb-2">Generation Failed</h1>
+        <p className="text-red-600 mb-4">{error}</p>
+        <p className="text-sm text-gray-500">Returning to options...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-lg mx-auto text-center py-12">

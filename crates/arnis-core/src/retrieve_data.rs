@@ -227,11 +227,7 @@ pub fn fetch_data_from_overpass(
                 println!("Additional debug information: {data:?}");
             }
 
-            if !is_running_with_gui() {
-                std::process::exit(1);
-            } else {
-                return Err("Data fetch failed".into());
-            }
+            return Err("Data fetch failed".into());
         }
 
         emit_gui_progress_update(5.0, "");

@@ -23,6 +23,9 @@ function calcArea(bounds: BBox): number {
 export function MapSelector({ onSelect }: Props) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const markerRef = useRef<maplibregl.Marker | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mlRef = useRef<any>(null);
   const [drawing, setDrawing] = useState(false);
   const [startPoint, setStartPoint] = useState<{ lng: number; lat: number } | null>(null);
   const [currentBbox, setCurrentBbox] = useState<BBox | null>(null);
@@ -34,6 +37,7 @@ export function MapSelector({ onSelect }: Props) {
     if (!mapContainer.current || mapRef.current) return;
 
     import("maplibre-gl").then((maplibregl) => {
+      mlRef.current = maplibregl.default;
       const map = new maplibregl.default.Map({
         container: mapContainer.current!,
         style: {
@@ -86,6 +90,25 @@ export function MapSelector({ onSelect }: Props) {
       mapRef.current?.remove();
       mapRef.current = null;
     };
+  }, []);
+
+  const updateMarker = useCallback((bbox: BBox) => {
+    const map = mapRef.current;
+    const ml = mlRef.current;
+    if (!map || !ml) return;
+
+    // Remove existing marker
+    if (markerRef.current) {
+      markerRef.current.remove();
+      markerRef.current = null;
+    }
+
+    const centerLng = (bbox.minLng + bbox.maxLng) / 2;
+    const centerLat = (bbox.minLat + bbox.maxLat) / 2;
+
+    markerRef.current = new ml.Marker({ color: "#5B8C3E" })
+      .setLngLat([centerLng, centerLat])
+      .addTo(map);
   }, []);
 
   const updateSelectionRect = useCallback((bbox: BBox) => {
@@ -146,7 +169,10 @@ export function MapSelector({ onSelect }: Props) {
     if (!mapRef.current) return;
     mapRef.current.dragPan.enable();
     setDrawing(false);
-  }, []);
+    if (currentBbox) {
+      updateMarker(currentBbox);
+    }
+  }, [currentBbox, updateMarker]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -179,6 +205,7 @@ export function MapSelector({ onSelect }: Props) {
     };
     setCurrentBbox(bbox);
     updateSelectionRect(bbox);
+    updateMarker(bbox);
     mapRef.current.fitBounds(
       [[bbox.minLng, bbox.minLat], [bbox.maxLng, bbox.maxLat]],
       { padding: 50 }
@@ -188,6 +215,10 @@ export function MapSelector({ onSelect }: Props) {
 
   const handleReset = () => {
     setCurrentBbox(null);
+    if (markerRef.current) {
+      markerRef.current.remove();
+      markerRef.current = null;
+    }
     const map = mapRef.current;
     if (map) {
       const source = map.getSource("selection") as maplibregl.GeoJSONSource | undefined;
