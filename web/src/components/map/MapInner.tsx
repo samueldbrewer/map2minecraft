@@ -35,14 +35,22 @@ export default function MapInner({ bbox, onBboxChange }: Props) {
         style: {
           version: 8,
           sources: {
-            osm: {
+            satellite: {
               type: "raster",
-              tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+              tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
               tileSize: 256,
-              attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+              attribution: "Esri, Maxar, Earthstar Geographics",
+            },
+            streets: {
+              type: "raster",
+              tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}"],
+              tileSize: 256,
             },
           },
-          layers: [{ id: "osm", type: "raster", source: "osm" }],
+          layers: [
+            { id: "satellite", type: "raster", source: "satellite" },
+            { id: "streets", type: "raster", source: "streets" },
+          ],
         },
         center: [0, 30],
         zoom: 3,
@@ -229,7 +237,7 @@ export default function MapInner({ bbox, onBboxChange }: Props) {
   }
 
   return (
-    <div className="relative h-[500px]">
+    <div className="relative h-[500px] bg-gray-800">
       <div
         ref={containerRef}
         className="absolute inset-0 cursor-crosshair"

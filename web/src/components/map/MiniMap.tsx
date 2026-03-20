@@ -26,14 +26,22 @@ export default function MiniMap({ bbox }: Props) {
         style: {
           version: 8,
           sources: {
-            osm: {
+            satellite: {
               type: "raster",
-              tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+              tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
               tileSize: 256,
-              attribution: "&copy; OpenStreetMap",
+              attribution: "Esri, Maxar, Earthstar Geographics",
+            },
+            streets: {
+              type: "raster",
+              tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}"],
+              tileSize: 256,
             },
           },
-          layers: [{ id: "osm", type: "raster", source: "osm" }],
+          layers: [
+            { id: "satellite", type: "raster", source: "satellite" },
+            { id: "streets", type: "raster", source: "streets" },
+          ],
         },
         center: [(bbox.minLng + bbox.maxLng) / 2, (bbox.minLat + bbox.maxLat) / 2],
         zoom: 12,

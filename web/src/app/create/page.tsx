@@ -105,7 +105,8 @@ export default function CreatePage() {
         <div>
           <h1 className="text-2xl font-bold mb-2">Your World Preview</h1>
           <p className="text-gray-600 mb-6">
-            Explore an interactive 3D preview of your generated Minecraft world.
+            This is a simplified overview of your generated area. Your actual Minecraft
+            world will be fully 3D with detailed buildings, roads, interiors, and terrain.
           </p>
           <WorldPreview jobId={jobId} />
           <div className="mt-6 flex justify-center">

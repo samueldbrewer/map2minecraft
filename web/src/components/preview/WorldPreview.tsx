@@ -148,6 +148,10 @@ export function WorldPreview({ jobId }: Props) {
       <p className="text-xs text-gray-400 mt-2 text-center">
         Click and drag to rotate. Scroll to zoom. Right-click to pan.
       </p>
+      <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2 mt-3 text-center">
+        This preview shows a simplified terrain overview. Your downloaded world includes
+        full-detail buildings, block-level roads, trees, and more.
+      </p>
     </div>
   );
 }
