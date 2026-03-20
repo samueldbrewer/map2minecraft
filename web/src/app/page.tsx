@@ -7,22 +7,22 @@ const showcaseItems = [
   {
     label: "Historic City Center",
     desc: "Dense streets, churches, and brick row houses faithfully recreated block by block.",
-    position: "0% 0%",
+    src: "/showcase/city.jpg",
   },
   {
     label: "Parks & Countryside",
     desc: "Open fields, tree lines, and landmarks surrounded by lush terrain.",
-    position: "100% 0%",
+    src: "/showcase/park.jpg",
   },
   {
     label: "Urban Intersections",
     desc: "Wide boulevards, traffic circles, and mixed-use buildings at true scale.",
-    position: "0% 100%",
+    src: "/showcase/intersection.jpg",
   },
   {
     label: "Downtown Skyline",
     desc: "Skyscrapers, office towers, and dense high-rises reaching into the clouds.",
-    position: "100% 100%",
+    src: "/showcase/skyline.jpg",
   },
 ];
 
@@ -101,12 +101,11 @@ export default function Home() {
               <div key={i} className="group relative rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-shadow border border-gray-100">
                 <div className="aspect-[4/3] overflow-hidden">
                   <Image
-                    src="/showcase/hero.jpg"
+                    src={item.src}
                     alt={item.label}
                     width={480}
                     height={360}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    style={{ objectPosition: item.position }}
                   />
                 </div>
                 <div className="p-4 bg-white">
