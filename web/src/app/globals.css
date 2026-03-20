@@ -12,17 +12,21 @@ body {
   font-family: var(--font-inter), system-ui, sans-serif;
 }
 
-/* Fix Tailwind v4 preflight breaking MapLibre GL tile rendering.
-   Tailwind's base layer sets img { max-width: 100% } which constrains
-   MapLibre's internal tile images, causing an empty map frame. */
+/* Fix Tailwind v4 preflight breaking MapLibre GL rendering.
+   Tailwind's base layer sets img { max-width: 100% } and height: auto
+   which can constrain MapLibre's internal elements. */
 .maplibregl-map img {
-  max-width: none;
-  max-height: none;
+  max-width: none !important;
+  max-height: none !important;
 }
 
 .maplibregl-canvas-container,
 .maplibregl-canvas {
-  max-width: none;
-  max-height: none;
+  max-width: none !important;
+  max-height: none !important;
+}
+
+.maplibregl-map canvas {
+  display: block !important;
 }
 

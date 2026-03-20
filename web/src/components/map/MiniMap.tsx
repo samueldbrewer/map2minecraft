@@ -41,7 +41,7 @@ export default function MiniMap({ bbox }: Props) {
         attributionControl: false,
       });
 
-      map.on("load", () => {
+      map.once("style.load", () => {
         map.addSource("area", {
           type: "geojson",
           data: {

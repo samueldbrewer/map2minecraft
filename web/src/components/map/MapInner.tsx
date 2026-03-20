@@ -18,7 +18,7 @@ export default function MapInner({ bbox, onBboxChange }: Props) {
   const readyRef = useRef(false);
   const [drawing, setDrawing] = useState(false);
   const [startPoint, setStartPoint] = useState<{ lng: number; lat: number } | null>(null);
-  const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,7 +51,10 @@ export default function MapInner({ bbox, onBboxChange }: Props) {
       map.addControl(new ml.NavigationControl(), "top-right");
       mapRef.current = map;
 
-      map.on("load", () => {
+      // Show the map canvas immediately — don't wait for tiles
+      if (!cancelled) setMapReady(true);
+
+      map.once("style.load", () => {
         map.addSource("selection", {
           type: "geojson",
           data: { type: "FeatureCollection", features: [] },
@@ -69,7 +72,10 @@ export default function MapInner({ bbox, onBboxChange }: Props) {
           paint: { "line-color": "#5B8C3E", "line-width": 2 },
         });
         readyRef.current = true;
-        setMapLoaded(true);
+      });
+
+      map.on("error", (e: any) => {
+        console.error("MapLibre error:", e.error?.message || e);
       });
     }).catch((err) => {
       console.error("MapLibre load error:", err);
@@ -87,7 +93,7 @@ export default function MapInner({ bbox, onBboxChange }: Props) {
   useEffect(() => {
     const map = mapRef.current;
     const ml = mlRef.current;
-    if (!map || !ml || !mapLoaded) return;
+    if (!map || !ml || !mapReady) return;
 
     if (!bbox) {
       const source = map.getSource("selection");
@@ -131,7 +137,7 @@ export default function MapInner({ bbox, onBboxChange }: Props) {
       [[bbox.minLng, bbox.minLat], [bbox.maxLng, bbox.maxLat]],
       { padding: 50 }
     );
-  }, [bbox, mapLoaded]);
+  }, [bbox, mapReady]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     const map = mapRef.current;
@@ -224,11 +230,6 @@ export default function MapInner({ bbox, onBboxChange }: Props) {
 
   return (
     <div className="relative h-[500px]">
-      <div
-        className={`absolute inset-0 bg-gray-100 flex items-center justify-center text-gray-400 z-10 transition-opacity ${mapLoaded ? "opacity-0 pointer-events-none" : "opacity-100"}`}
-      >
-        Loading map...
-      </div>
       <div
         ref={containerRef}
         className="absolute inset-0 cursor-crosshair"
