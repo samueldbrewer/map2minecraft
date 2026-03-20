@@ -109,8 +109,22 @@ async fn process_job(state: AppState, job_id: String) {
     let state_clone = state.clone();
     let job_id_clone = job_id.clone();
 
+    // Progress channel: blocking task sends updates, async task writes to job store
+    let (progress_tx, mut progress_rx) = tokio::sync::mpsc::channel::<(f64, String)>(32);
+    let state_for_progress = state.clone();
+    let job_id_for_progress = job_id.clone();
+    tokio::spawn(async move {
+        while let Some((progress, message)) = progress_rx.recv().await {
+            let mut store = state_for_progress.jobs.write().await;
+            store.update_job(&job_id_for_progress, |job| {
+                job.progress = progress;
+                job.message = message;
+            });
+        }
+    });
+
     let result = tokio::task::spawn_blocking(move || {
-        run_generation(request, world_dir_clone)
+        run_generation(request, world_dir_clone, progress_tx)
     }).await;
 
     match result {
@@ -163,8 +177,13 @@ async fn process_job(state: AppState, job_id: String) {
 fn run_generation(
     request: crate::jobs::GenerateRequest,
     world_dir: std::path::PathBuf,
+    progress_tx: tokio::sync::mpsc::Sender<(f64, String)>,
 ) -> Result<std::path::PathBuf, String> {
     use arnis_core::*;
+
+    let update = |p: f64, m: &str| {
+        let _ = progress_tx.blocking_send((p, m.to_string()));
+    };
 
     let bbox_str = format!(
         "{},{},{},{}",
@@ -177,7 +196,8 @@ fn run_generation(
     let scale = request.scale.unwrap_or(1.0);
     let is_bedrock = request.bedrock.unwrap_or(false);
 
-    // Fetch OSM data
+    // [1/7] Fetch OSM data
+    update(5.0, "[1/7] Fetching map data...");
     let raw_data = retrieve_data::fetch_data_from_overpass(bbox, false, "requests", None)
         .map_err(|e| format!("Failed to fetch data: {}", e))?;
 
@@ -202,18 +222,23 @@ fn run_generation(
         spawn_lng: request.spawn_lng,
     };
 
-    let ground = ground::generate_ground_data(&args)
-        .map_err(|e| format!("Terrain error: {}", e))?;
-
-    // Parse raw data
+    // [2/7] Parse OSM data
+    update(12.0, "[2/7] Parsing map data...");
     let (mut parsed_elements, mut xzbbox) =
         osm_parser::parse_osm_data(raw_data, args.bbox, args.scale, args.debug);
     parsed_elements.sort_by_key(|element| osm_parser::get_priority(element));
 
-    // Transform map
+    // [3/7] Fetch elevation / generate terrain
+    update(18.0, "[3/7] Generating terrain...");
+    let ground = ground::generate_ground_data(&args)
+        .map_err(|e| format!("Terrain error: {}", e))?;
+
+    // [4/7] Transform map
+    update(25.0, "[4/7] Transforming map...");
     map_transformation::transform_map(&mut parsed_elements, &mut xzbbox, &mut ground.clone());
 
-    // Determine format and path
+    // [5/7] Prepare world
+    update(30.0, "[5/7] Preparing world...");
     let world_format = if is_bedrock {
         world_editor::WorldFormat::BedrockMcWorld
     } else {
@@ -251,14 +276,20 @@ fn run_generation(
         spawn_point,
     };
 
-    data_processing::generate_world_with_options(
+    // [6/7] Generate world (buildings, roads, terrain fill, ground)
+    update(35.0, "[6/7] Building world...");
+    let result = data_processing::generate_world_with_options(
         parsed_elements,
         xzbbox,
         bbox,
         ground,
         &args,
         options,
-    )
+    );
+
+    // [7/7] Done
+    update(88.0, "[7/7] Finalizing...");
+    result
 }
 
 async fn job_status_sse(

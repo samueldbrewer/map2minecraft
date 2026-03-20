@@ -3,38 +3,17 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import type { BBox } from "@/lib/store";
 
-// maplibre-gl is loaded via CDN script tag in layout.tsx
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-declare global { interface Window { maplibregl: any } }
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 interface Props {
   bbox: BBox | null;
   onBboxChange: (bbox: BBox) => void;
 }
 
-function waitForMapLibre(): Promise<typeof window.maplibregl> {
-  return new Promise((resolve, reject) => {
-    if (typeof window !== "undefined" && window.maplibregl) return resolve(window.maplibregl);
-    let tries = 0;
-    const interval = setInterval(() => {
-      if (typeof window !== "undefined" && window.maplibregl) {
-        clearInterval(interval);
-        resolve(window.maplibregl);
-      } else if (++tries > 150) { // 15 seconds max
-        clearInterval(interval);
-        reject(new Error("MapLibre GL JS did not load from CDN after 15s. Check browser console."));
-      }
-    }, 100);
-  });
-}
-
 export default function MapInner({ bbox, onBboxChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markerRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mlRef = useRef<any>(null);
   const readyRef = useRef(false);
   const [drawing, setDrawing] = useState(false);
@@ -46,11 +25,12 @@ export default function MapInner({ bbox, onBboxChange }: Props) {
     if (!containerRef.current || mapRef.current) return;
     let cancelled = false;
 
-    waitForMapLibre().then((maplibregl) => {
+    import("maplibre-gl").then((maplibregl) => {
       if (cancelled || !containerRef.current) return;
-      mlRef.current = maplibregl;
+      mlRef.current = maplibregl.default ?? maplibregl;
+      const ml = mlRef.current;
 
-      const map = new maplibregl.Map({
+      const map = new ml.Map({
         container: containerRef.current,
         style: {
           version: 8,
@@ -68,7 +48,7 @@ export default function MapInner({ bbox, onBboxChange }: Props) {
         zoom: 3,
       });
 
-      map.addControl(new maplibregl.NavigationControl(), "top-right");
+      map.addControl(new ml.NavigationControl(), "top-right");
       mapRef.current = map;
 
       map.on("load", () => {
