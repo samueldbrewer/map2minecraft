@@ -14,15 +14,15 @@ interface Props {
 
 function waitForMapLibre(): Promise<typeof window.maplibregl> {
   return new Promise((resolve, reject) => {
-    if (window.maplibregl) return resolve(window.maplibregl);
+    if (typeof window !== "undefined" && window.maplibregl) return resolve(window.maplibregl);
     let tries = 0;
     const interval = setInterval(() => {
-      if (window.maplibregl) {
+      if (typeof window !== "undefined" && window.maplibregl) {
         clearInterval(interval);
         resolve(window.maplibregl);
-      } else if (++tries > 50) { // 5 seconds max
+      } else if (++tries > 150) { // 15 seconds max
         clearInterval(interval);
-        reject(new Error("MapLibre GL failed to load"));
+        reject(new Error("MapLibre GL JS did not load from CDN after 15s. Check browser console."));
       }
     }, 100);
   });
@@ -243,13 +243,20 @@ export default function MapInner({ bbox, onBboxChange }: Props) {
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="h-[500px] cursor-crosshair"
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-    />
+    <div className="relative">
+      {!mapLoaded && (
+        <div className="absolute inset-0 h-[500px] bg-gray-100 flex items-center justify-center text-gray-400 z-10">
+          Loading map...
+        </div>
+      )}
+      <div
+        ref={containerRef}
+        className="h-[500px] cursor-crosshair"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      />
+    </div>
   );
 }

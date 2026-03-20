@@ -28,7 +28,7 @@ export default function RootLayout({
       <body className={`${inter.className} bg-[#F5F5F0] text-[#3B3B3B] min-h-screen flex flex-col`}>
         <Script
           src="https://unpkg.com/maplibre-gl@5.20.2/dist/maplibre-gl.js"
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
         />
         <Navbar />
         <main className="flex-1">{children}</main>
