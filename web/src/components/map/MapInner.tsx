@@ -243,15 +243,15 @@ export default function MapInner({ bbox, onBboxChange }: Props) {
   }
 
   return (
-    <div className="relative">
-      {!mapLoaded && (
-        <div className="absolute inset-0 h-[500px] bg-gray-100 flex items-center justify-center text-gray-400 z-10">
-          Loading map...
-        </div>
-      )}
+    <div className="relative h-[500px]">
+      <div
+        className={`absolute inset-0 bg-gray-100 flex items-center justify-center text-gray-400 z-10 transition-opacity ${mapLoaded ? "opacity-0 pointer-events-none" : "opacity-100"}`}
+      >
+        Loading map...
+      </div>
       <div
         ref={containerRef}
-        className="h-[500px] cursor-crosshair"
+        className="absolute inset-0 cursor-crosshair"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
