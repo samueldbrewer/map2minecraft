@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { BBox } from "@/lib/store";
 
 // maplibre-gl is loaded via CDN script tag in layout.tsx
@@ -31,7 +31,6 @@ export default function MiniMap({ bbox }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -102,7 +101,6 @@ export default function MiniMap({ bbox }: Props) {
       mapRef.current = map;
     }).catch((err) => {
       console.error("MiniMap load error:", err);
-      if (!cancelled) setLoadError(String(err));
     });
 
     return () => {
@@ -111,14 +109,6 @@ export default function MiniMap({ bbox }: Props) {
       mapRef.current = null;
     };
   }, [bbox]);
-
-  if (loadError) {
-    return (
-      <div className="w-full h-48 bg-red-50 rounded-lg flex items-center justify-center text-red-500 text-xs p-2">
-        Map error: {loadError}
-      </div>
-    );
-  }
 
   return <div ref={containerRef} className="w-full h-48 rounded-lg" />;
 }
