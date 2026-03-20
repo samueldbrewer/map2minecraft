@@ -99,8 +99,8 @@ export default function MiniMap({ bbox }: Props) {
       });
 
       mapRef.current = map;
-    }).catch((err) => {
-      console.error("MiniMap load error:", err);
+    }).catch(() => {
+      // MapLibre failed to load from CDN
     });
 
     return () => {
@@ -110,5 +110,5 @@ export default function MiniMap({ bbox }: Props) {
     };
   }, [bbox]);
 
-  return <div ref={containerRef} className="w-full h-48 rounded-lg" />;
+  return <div ref={containerRef} style={{ width: "100%", height: "192px" }} className="rounded-lg" />;
 }

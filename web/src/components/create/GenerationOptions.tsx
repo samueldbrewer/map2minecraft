@@ -86,10 +86,10 @@ export function GenerationOptions({ bbox, areaKm2, options, onChange, onBack, on
         {/* Toggles */}
         <div className="space-y-3">
           {[
-            { key: "terrain" as const, label: "Terrain Elevation", desc: "Real elevation data from terrain APIs" },
+            { key: "terrain" as const, label: "3D Terrain", desc: "Real-world elevation data for hills and valleys (recommended)" },
             { key: "interior" as const, label: "Building Interiors", desc: "Generate floors and rooms inside buildings" },
             { key: "roof" as const, label: "Roofs", desc: "Generate roofs on buildings" },
-            { key: "fillground" as const, label: "Fill Ground", desc: "Fill underground with stone (larger file size)" },
+            { key: "fillground" as const, label: "Solid Ground", desc: "Fill terrain with stone underground (recommended)" },
           ].map((toggle) => (
             <label key={toggle.key} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
               <div>

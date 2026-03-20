@@ -144,15 +144,18 @@ impl Ground {
     }
 }
 
-pub fn generate_ground_data(args: &Args) -> Ground {
+pub fn generate_ground_data(args: &Args) -> Result<Ground, String> {
     if args.terrain {
         println!("{} Fetching elevation...", "[3/7]".bold());
         emit_gui_progress_update(14.0, "Fetching elevation...");
         let ground = Ground::new_enabled(&args.bbox, args.scale, args.ground_level);
+        if !ground.elevation_enabled {
+            return Err("Failed to fetch elevation data. Try disabling terrain or selecting a different area.".into());
+        }
         if args.debug {
             ground.save_debug_image("elevation_debug");
         }
-        return ground;
+        return Ok(ground);
     }
-    Ground::new_flat(args.ground_level)
+    Ok(Ground::new_flat(args.ground_level))
 }

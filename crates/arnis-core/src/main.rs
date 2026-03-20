@@ -121,7 +121,8 @@ fn run_cli() {
     }
     .expect("Failed to fetch data");
 
-    let mut ground = ground::generate_ground_data(&args);
+    let mut ground = ground::generate_ground_data(&args)
+        .expect("Failed to generate terrain");
 
     // Parse raw data
     let (mut parsed_elements, mut xzbbox) =

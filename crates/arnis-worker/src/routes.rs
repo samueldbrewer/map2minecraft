@@ -191,10 +191,10 @@ fn run_generation(
         downloader: "requests".to_string(),
         scale,
         ground_level: -62,
-        terrain: request.terrain.unwrap_or(false),
+        terrain: request.terrain.unwrap_or(true),
         interior: request.interior.unwrap_or(true),
         roof: request.roof.unwrap_or(true),
-        fillground: request.fillground.unwrap_or(false),
+        fillground: request.fillground.unwrap_or(true),
         city_boundaries: true,
         debug: false,
         timeout: None,
@@ -202,7 +202,8 @@ fn run_generation(
         spawn_lng: request.spawn_lng,
     };
 
-    let ground = ground::generate_ground_data(&args);
+    let ground = ground::generate_ground_data(&args)
+        .map_err(|e| format!("Terrain error: {}", e))?;
 
     // Parse raw data
     let (mut parsed_elements, mut xzbbox) =

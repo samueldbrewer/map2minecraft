@@ -44,7 +44,9 @@ type TileDownloadResult = Result<((u32, u32), TileImage), String>;
 /// Only deletes .png files within the arnis-tile-cache directory that are older than TILE_CACHE_MAX_AGE_DAYS.
 /// This function is safe and will not delete files outside the cache directory or fail on errors.
 pub fn cleanup_old_cached_tiles() {
-    let tile_cache_dir = PathBuf::from("./arnis-tile-cache");
+    let tile_cache_dir = PathBuf::from(
+        std::env::var("TILE_CACHE_DIR").unwrap_or_else(|_| "/tmp/arnis-tile-cache".to_string()),
+    );
 
     if !tile_cache_dir.exists() || !tile_cache_dir.is_dir() {
         return; // Nothing to clean up
@@ -287,7 +289,9 @@ pub fn fetch_elevation_data(
     let mut height_grid: Vec<Vec<f64>> = vec![vec![f64::NAN; grid_width]; grid_height];
     let mut extreme_values_found = Vec::new(); // Track extreme values for debugging
 
-    let tile_cache_dir = PathBuf::from("./arnis-tile-cache");
+    let tile_cache_dir = PathBuf::from(
+        std::env::var("TILE_CACHE_DIR").unwrap_or_else(|_| "/tmp/arnis-tile-cache".to_string()),
+    );
     if !tile_cache_dir.exists() {
         std::fs::create_dir_all(&tile_cache_dir)?;
     }

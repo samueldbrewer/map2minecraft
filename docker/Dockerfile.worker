@@ -49,12 +49,13 @@ RUN apt-get update && apt-get install -y \
     libssl3 \
     && rm -rf /var/lib/apt/lists/*
 
-# Create data directory for world files
-RUN mkdir -p /data/worlds
+# Create data directories for world files and tile cache
+RUN mkdir -p /data/worlds /data/tile-cache
 
 COPY --from=builder /app/target/release/arnis-worker /usr/local/bin/arnis-worker
 
 ENV DATA_DIR=/data/worlds
+ENV TILE_CACHE_DIR=/data/tile-cache
 ENV RUST_LOG=arnis_worker=info,tower_http=info
 
 EXPOSE 8080

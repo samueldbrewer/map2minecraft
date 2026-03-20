@@ -41,10 +41,10 @@ interface AppState {
 const defaultOptions: GenerationOptions = {
   bedrock: false,
   scale: 1.0,
-  terrain: false,
+  terrain: true,
   interior: true,
   roof: true,
-  fillground: false,
+  fillground: true,
 }
 
 export const useAppStore = create<AppState>((set) => ({
