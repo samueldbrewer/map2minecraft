@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -23,9 +24,12 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.20.2/dist/maplibre-gl.css" />
-        <script src="https://unpkg.com/maplibre-gl@5.20.2/dist/maplibre-gl.js" async></script>
       </head>
       <body className={`${inter.className} bg-[#F5F5F0] text-[#3B3B3B] min-h-screen flex flex-col`}>
+        <Script
+          src="https://unpkg.com/maplibre-gl@5.20.2/dist/maplibre-gl.js"
+          strategy="beforeInteractive"
+        />
         <Navbar />
         <main className="flex-1">{children}</main>
         <Footer />
