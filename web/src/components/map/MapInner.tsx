@@ -3,9 +3,29 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import type { BBox } from "@/lib/store";
 
+// maplibre-gl is loaded via CDN script tag in layout.tsx
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+declare global { interface Window { maplibregl: any } }
+
 interface Props {
   bbox: BBox | null;
   onBboxChange: (bbox: BBox) => void;
+}
+
+function waitForMapLibre(): Promise<typeof window.maplibregl> {
+  return new Promise((resolve, reject) => {
+    if (window.maplibregl) return resolve(window.maplibregl);
+    let tries = 0;
+    const interval = setInterval(() => {
+      if (window.maplibregl) {
+        clearInterval(interval);
+        resolve(window.maplibregl);
+      } else if (++tries > 50) { // 5 seconds max
+        clearInterval(interval);
+        reject(new Error("MapLibre GL failed to load"));
+      }
+    }, 100);
+  });
 }
 
 export default function MapInner({ bbox, onBboxChange }: Props) {
@@ -22,72 +42,59 @@ export default function MapInner({ bbox, onBboxChange }: Props) {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Initialize map
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-
     let cancelled = false;
 
-    (async () => {
-      try {
-        // Dynamic import of maplibre-gl
-        const maplibreglModule = await import("maplibre-gl");
-        // Handle both ESM default export and direct export
-        const maplibregl = maplibreglModule.default || maplibreglModule;
+    waitForMapLibre().then((maplibregl) => {
+      if (cancelled || !containerRef.current) return;
+      mlRef.current = maplibregl;
 
-        // Load CSS
-        await import("maplibre-gl/dist/maplibre-gl.css");
-
-        if (cancelled || !containerRef.current) return;
-
-        mlRef.current = maplibregl;
-
-        const map = new maplibregl.Map({
-          container: containerRef.current,
-          style: {
-            version: 8 as const,
-            sources: {
-              osm: {
-                type: "raster" as const,
-                tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-                tileSize: 256,
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-              },
+      const map = new maplibregl.Map({
+        container: containerRef.current,
+        style: {
+          version: 8,
+          sources: {
+            osm: {
+              type: "raster",
+              tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+              tileSize: 256,
+              attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
             },
-            layers: [{ id: "osm", type: "raster" as const, source: "osm" }],
           },
-          center: [0, 30] as [number, number],
-          zoom: 3,
-        });
+          layers: [{ id: "osm", type: "raster", source: "osm" }],
+        },
+        center: [0, 30],
+        zoom: 3,
+      });
 
-        map.addControl(new maplibregl.NavigationControl(), "top-right");
-        mapRef.current = map;
+      map.addControl(new maplibregl.NavigationControl(), "top-right");
+      mapRef.current = map;
 
-        map.on("load", () => {
-          map.addSource("selection", {
-            type: "geojson",
-            data: { type: "FeatureCollection", features: [] },
-          });
-          map.addLayer({
-            id: "selection-fill",
-            type: "fill",
-            source: "selection",
-            paint: { "fill-color": "#5B8C3E", "fill-opacity": 0.15 },
-          });
-          map.addLayer({
-            id: "selection-border",
-            type: "line",
-            source: "selection",
-            paint: { "line-color": "#5B8C3E", "line-width": 2 },
-          });
-          readyRef.current = true;
-          setMapLoaded(true);
+      map.on("load", () => {
+        map.addSource("selection", {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: [] },
         });
-      } catch (err) {
-        console.error("Failed to load MapLibre GL:", err);
-        setLoadError(String(err));
-      }
-    })();
+        map.addLayer({
+          id: "selection-fill",
+          type: "fill",
+          source: "selection",
+          paint: { "fill-color": "#5B8C3E", "fill-opacity": 0.15 },
+        });
+        map.addLayer({
+          id: "selection-border",
+          type: "line",
+          source: "selection",
+          paint: { "line-color": "#5B8C3E", "line-width": 2 },
+        });
+        readyRef.current = true;
+        setMapLoaded(true);
+      });
+    }).catch((err) => {
+      console.error("MapLibre load error:", err);
+      if (!cancelled) setLoadError(String(err));
+    });
 
     return () => {
       cancelled = true;
@@ -112,7 +119,6 @@ export default function MapInner({ bbox, onBboxChange }: Props) {
       return;
     }
 
-    // Update selection rect
     const source = map.getSource("selection");
     if (source) {
       source.setData({
@@ -134,7 +140,6 @@ export default function MapInner({ bbox, onBboxChange }: Props) {
       });
     }
 
-    // Update marker
     if (markerRef.current) markerRef.current.remove();
     const centerLng = (bbox.minLng + bbox.maxLng) / 2;
     const centerLat = (bbox.minLat + bbox.maxLat) / 2;

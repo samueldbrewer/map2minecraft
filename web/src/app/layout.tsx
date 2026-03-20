@@ -21,6 +21,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.20.2/dist/maplibre-gl.css" />
+        <script src="https://unpkg.com/maplibre-gl@5.20.2/dist/maplibre-gl.js" async></script>
+      </head>
       <body className={`${inter.className} bg-[#F5F5F0] text-[#3B3B3B] min-h-screen flex flex-col`}>
         <Navbar />
         <main className="flex-1">{children}</main>

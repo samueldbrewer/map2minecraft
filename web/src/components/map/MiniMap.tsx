@@ -3,8 +3,28 @@
 import { useEffect, useRef, useState } from "react";
 import type { BBox } from "@/lib/store";
 
+// maplibre-gl is loaded via CDN script tag in layout.tsx
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+declare global { interface Window { maplibregl: any } }
+
 interface Props {
   bbox: BBox;
+}
+
+function waitForMapLibre(): Promise<typeof window.maplibregl> {
+  return new Promise((resolve, reject) => {
+    if (window.maplibregl) return resolve(window.maplibregl);
+    let tries = 0;
+    const interval = setInterval(() => {
+      if (window.maplibregl) {
+        clearInterval(interval);
+        resolve(window.maplibregl);
+      } else if (++tries > 50) {
+        clearInterval(interval);
+        reject(new Error("MapLibre GL failed to load"));
+      }
+    }, 100);
+  });
 }
 
 export default function MiniMap({ bbox }: Props) {
@@ -15,82 +35,75 @@ export default function MiniMap({ bbox }: Props) {
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-
     let cancelled = false;
 
-    (async () => {
-      try {
-        const maplibreglModule = await import("maplibre-gl");
-        const maplibregl = maplibreglModule.default || maplibreglModule;
-        await import("maplibre-gl/dist/maplibre-gl.css");
+    waitForMapLibre().then((maplibregl) => {
+      if (cancelled || !containerRef.current) return;
 
-        if (cancelled || !containerRef.current) return;
-
-        const map = new maplibregl.Map({
-          container: containerRef.current,
-          style: {
-            version: 8 as const,
-            sources: {
-              osm: {
-                type: "raster" as const,
-                tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-                tileSize: 256,
-                attribution: "&copy; OpenStreetMap",
-              },
+      const map = new maplibregl.Map({
+        container: containerRef.current,
+        style: {
+          version: 8,
+          sources: {
+            osm: {
+              type: "raster",
+              tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+              tileSize: 256,
+              attribution: "&copy; OpenStreetMap",
             },
-            layers: [{ id: "osm", type: "raster" as const, source: "osm" }],
           },
-          center: [(bbox.minLng + bbox.maxLng) / 2, (bbox.minLat + bbox.maxLat) / 2] as [number, number],
-          zoom: 12,
-          interactive: false,
-          attributionControl: false,
-        });
+          layers: [{ id: "osm", type: "raster", source: "osm" }],
+        },
+        center: [(bbox.minLng + bbox.maxLng) / 2, (bbox.minLat + bbox.maxLat) / 2],
+        zoom: 12,
+        interactive: false,
+        attributionControl: false,
+      });
 
-        map.on("load", () => {
-          map.addSource("area", {
-            type: "geojson",
-            data: {
-              type: "FeatureCollection",
-              features: [{
-                type: "Feature",
-                properties: {},
-                geometry: {
-                  type: "Polygon",
-                  coordinates: [[
-                    [bbox.minLng, bbox.minLat],
-                    [bbox.maxLng, bbox.minLat],
-                    [bbox.maxLng, bbox.maxLat],
-                    [bbox.minLng, bbox.maxLat],
-                    [bbox.minLng, bbox.minLat],
-                  ]],
-                },
-              }],
-            },
-          });
-          map.addLayer({
-            id: "area-fill",
-            type: "fill",
-            source: "area",
-            paint: { "fill-color": "#5B8C3E", "fill-opacity": 0.2 },
-          });
-          map.addLayer({
-            id: "area-border",
-            type: "line",
-            source: "area",
-            paint: { "line-color": "#5B8C3E", "line-width": 2 },
-          });
-          map.fitBounds(
-            [[bbox.minLng, bbox.minLat], [bbox.maxLng, bbox.maxLat]],
-            { padding: 30, duration: 0 }
-          );
+      map.on("load", () => {
+        map.addSource("area", {
+          type: "geojson",
+          data: {
+            type: "FeatureCollection",
+            features: [{
+              type: "Feature",
+              properties: {},
+              geometry: {
+                type: "Polygon",
+                coordinates: [[
+                  [bbox.minLng, bbox.minLat],
+                  [bbox.maxLng, bbox.minLat],
+                  [bbox.maxLng, bbox.maxLat],
+                  [bbox.minLng, bbox.maxLat],
+                  [bbox.minLng, bbox.minLat],
+                ]],
+              },
+            }],
+          },
         });
+        map.addLayer({
+          id: "area-fill",
+          type: "fill",
+          source: "area",
+          paint: { "fill-color": "#5B8C3E", "fill-opacity": 0.2 },
+        });
+        map.addLayer({
+          id: "area-border",
+          type: "line",
+          source: "area",
+          paint: { "line-color": "#5B8C3E", "line-width": 2 },
+        });
+        map.fitBounds(
+          [[bbox.minLng, bbox.minLat], [bbox.maxLng, bbox.maxLat]],
+          { padding: 30, duration: 0 }
+        );
+      });
 
-        mapRef.current = map;
-      } catch (err) {
-        console.error("Failed to load MiniMap:", err);
-        setLoadError(String(err));
-      }
-    })();
+      mapRef.current = map;
+    }).catch((err) => {
+      console.error("MiniMap load error:", err);
+      if (!cancelled) setLoadError(String(err));
+    });
 
     return () => {
       cancelled = true;
