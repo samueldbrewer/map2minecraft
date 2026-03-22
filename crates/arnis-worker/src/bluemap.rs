@@ -14,10 +14,9 @@ pub fn render_world(world_path: &Path, _job_id: &str, cache_dir: &Path) -> Resul
         .args([
             "-jar",
             "/usr/local/bin/bluemap.jar",
-            "--config",
+            "-c",
             config_dir.to_str().unwrap(),
-            "--render",
-            "--no-server",
+            "-r",
         ])
         .status()
         .map_err(|e| format!("Failed to launch BlueMap: {e}"))?;
