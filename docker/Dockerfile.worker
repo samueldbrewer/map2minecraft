@@ -46,8 +46,8 @@ RUN cargo build --release -p arnis-worker
 RUN curl -fL -o /tmp/bluemap.jar \
     https://github.com/BlueMap-Minecraft/BlueMap/releases/download/v5.16/bluemap-5.16-cli.jar
 
-# Runtime stage — eclipse-temurin:21-jre-bookworm ships Java 21 on Debian Bookworm
-FROM eclipse-temurin:21-jre-bookworm
+# Runtime stage — eclipse-temurin:21-jre-jammy ships Java 21 on Ubuntu 22.04
+FROM eclipse-temurin:21-jre-jammy
 
 RUN apt-get update && apt-get install -y \
     ca-certificates \
