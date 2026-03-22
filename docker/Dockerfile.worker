@@ -46,13 +46,12 @@ RUN cargo build --release -p arnis-worker
 RUN curl -fL -o /tmp/bluemap.jar \
     https://github.com/BlueMap-Minecraft/BlueMap/releases/download/v5.16/bluemap-5.16-cli.jar
 
-# Runtime stage
-FROM debian:bookworm-slim
+# Runtime stage — eclipse-temurin:21-jre-bookworm ships Java 21 on Debian Bookworm
+FROM eclipse-temurin:21-jre-bookworm
 
-RUN echo "deb http://deb.debian.org/debian bookworm-backports main" > /etc/apt/sources.list.d/backports.list \
-    && apt-get update \
-    && apt-get install -y ca-certificates libssl3 \
-    && apt-get install -y -t bookworm-backports openjdk-21-jre-headless \
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Create data directories for world files and tile cache
