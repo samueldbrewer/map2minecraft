@@ -66,13 +66,10 @@ root: "{root}/maps"
     );
     write_file(&config_dir.join("storages").join("file.conf"), &storage)?;
 
-    // maps/world.conf
+    // maps/world.conf — v5 format: only world + storage are required
     let map = format!(
-        r#"name: "map2minecraft"
-world: "{world}"
+        r#"world: "{world}"
 storage: "file"
-enable-hires: false
-remove-caves: true
 min-y: -64
 max-y: 320
 "#,
