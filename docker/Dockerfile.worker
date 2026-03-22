@@ -49,10 +49,10 @@ RUN curl -fL -o /tmp/bluemap.jar \
 # Runtime stage
 FROM debian:bookworm-slim
 
-RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    libssl3 \
-    openjdk-21-jre-headless \
+RUN echo "deb http://deb.debian.org/debian bookworm-backports main" > /etc/apt/sources.list.d/backports.list \
+    && apt-get update \
+    && apt-get install -y ca-certificates libssl3 \
+    && apt-get install -y -t bookworm-backports openjdk-21-jre-headless \
     && rm -rf /var/lib/apt/lists/*
 
 # Create data directories for world files and tile cache
