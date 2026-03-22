@@ -11,6 +11,8 @@ pub struct GenerateRequest {
     pub interior: Option<bool>,
     pub roof: Option<bool>,
     pub fillground: Option<bool>,
+    pub city_boundaries: Option<bool>,
+    pub timeout: Option<u64>,
     pub spawn_lat: Option<f64>,
     pub spawn_lng: Option<f64>,
 }

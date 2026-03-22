@@ -214,10 +214,10 @@ fn run_generation(
         terrain: request.terrain.unwrap_or(true),
         interior: request.interior.unwrap_or(true),
         roof: request.roof.unwrap_or(true),
-        fillground: request.fillground.unwrap_or(true),
-        city_boundaries: true,
+        fillground: request.fillground.unwrap_or(false),
+        city_boundaries: request.city_boundaries.unwrap_or(true),
         debug: false,
-        timeout: None,
+        timeout: request.timeout.map(std::time::Duration::from_secs),
         spawn_lat: request.spawn_lat,
         spawn_lng: request.spawn_lng,
     };

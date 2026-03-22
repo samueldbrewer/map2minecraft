@@ -14,6 +14,8 @@ export interface GenerationOptions {
   interior: boolean
   roof: boolean
   fillground: boolean
+  cityBoundaries: boolean
+  timeout: number
   spawnLat?: number
   spawnLng?: number
 }
@@ -44,7 +46,9 @@ const defaultOptions: GenerationOptions = {
   terrain: true,
   interior: true,
   roof: true,
-  fillground: true,
+  fillground: false,
+  cityBoundaries: true,
+  timeout: 60,
 }
 
 export const useAppStore = create<AppState>((set) => ({

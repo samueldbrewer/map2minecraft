@@ -27,6 +27,8 @@ export default function CreatePage() {
           interior: options.interior,
           roof: options.roof,
           fillground: options.fillground,
+          city_boundaries: options.cityBoundaries,
+          timeout: options.timeout,
           spawn_lat: options.spawnLat,
           spawn_lng: options.spawnLng,
         }),
