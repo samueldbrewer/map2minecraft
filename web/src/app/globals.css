@@ -12,21 +12,33 @@ body {
   font-family: var(--font-inter), system-ui, sans-serif;
 }
 
-/* Fix Tailwind v4 preflight breaking MapLibre GL rendering.
-   Tailwind's base layer sets img { max-width: 100% } and height: auto
-   which can constrain MapLibre's internal elements. */
-.maplibregl-map img {
-  max-width: none !important;
-  max-height: none !important;
+/* Fix Tailwind v4 preflight breaking MapLibre GL rendering. */
+.maplibregl-map {
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
 }
 
+.maplibregl-map img,
+.maplibregl-map canvas,
 .maplibregl-canvas-container,
 .maplibregl-canvas {
   max-width: none !important;
   max-height: none !important;
+  width: auto;
+  height: auto;
 }
 
-.maplibregl-map canvas {
+.maplibregl-canvas-container {
+  position: absolute !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.maplibregl-canvas {
   display: block !important;
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
 }
 

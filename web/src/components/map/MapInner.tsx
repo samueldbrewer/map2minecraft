@@ -59,6 +59,9 @@ export default function MapInner({ bbox, onBboxChange }: Props) {
       map.addControl(new ml.NavigationControl(), "top-right");
       mapRef.current = map;
 
+      // Force map to read container dimensions (timing fix)
+      map.resize();
+
       // Show the map canvas immediately — don't wait for tiles
       if (!cancelled) setMapReady(true);
 
@@ -237,15 +240,13 @@ export default function MapInner({ bbox, onBboxChange }: Props) {
   }
 
   return (
-    <div className="relative h-[500px] bg-gray-800">
-      <div
-        ref={containerRef}
-        className="absolute inset-0 cursor-crosshair"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-      />
-    </div>
+    <div
+      ref={containerRef}
+      className="h-[500px] w-full bg-gray-800 cursor-crosshair"
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+    />
   );
 }
