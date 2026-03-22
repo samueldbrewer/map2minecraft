@@ -39,6 +39,7 @@ pub struct Job {
     pub world_path: Option<String>,
     pub error: Option<String>,
     pub paid: bool,
+    pub bluemap_webroot: Option<String>,
 }
 
 pub struct JobStore {
@@ -69,6 +70,7 @@ impl JobStore {
             world_path: None,
             error: None,
             paid: false,
+            bluemap_webroot: None,
         };
 
         self.jobs.insert(id, job.clone());

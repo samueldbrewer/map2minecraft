@@ -1,155 +1,116 @@
 "use client";
 
-import { useEffect, useState, useRef, useMemo } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
-import * as THREE from "three";
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
-
-interface PreviewData {
-  width: number;
-  height: number;
-  heightmap: number[];
-  colormap: number[][];
-  min_y: number;
-  max_y: number;
-}
 
 interface Props {
   jobId: string;
 }
 
-function TerrainMesh({ data }: { data: PreviewData }) {
-  const meshRef = useRef<THREE.Mesh>(null);
-
-  const geometry = useMemo(() => {
-    const { width, height, heightmap, colormap, min_y, max_y } = data;
-    const geo = new THREE.PlaneGeometry(width, height, width - 1, height - 1);
-
-    // Rotate to horizontal
-    geo.rotateX(-Math.PI / 2);
-
-    const positions = geo.attributes.position;
-    const colors = new Float32Array(positions.count * 3);
-
-    const yRange = max_y - min_y || 1;
-    const heightScale = Math.min(width, height) * 0.15;
-
-    for (let i = 0; i < positions.count; i++) {
-      // Set Y (height)
-      const h = heightmap[i] || 0;
-      const normalizedH = (h - min_y) / yRange;
-      positions.setY(i, normalizedH * heightScale);
-
-      // Set vertex color
-      const color = colormap[i] || [160, 160, 160];
-      colors[i * 3] = color[0] / 255;
-      colors[i * 3 + 1] = color[1] / 255;
-      colors[i * 3 + 2] = color[2] / 255;
-    }
-
-    geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-    geo.computeVertexNormals();
-
-    return geo;
-  }, [data]);
-
-  useFrame((_, delta) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y += delta * 0.05;
-    }
-  });
-
-  return (
-    <mesh ref={meshRef} geometry={geometry}>
-      <meshLambertMaterial vertexColors side={THREE.DoubleSide} />
-    </mesh>
-  );
-}
+type PreviewState = "loading" | "ready" | "unavailable";
 
 export function WorldPreview({ jobId }: Props) {
-  const [previewData, setPreviewData] = useState<PreviewData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [viewPreset, setViewPreset] = useState<"perspective" | "top" | "side">("perspective");
+  const [state, setState] = useState<PreviewState>("loading");
+  const [isBedrock, setIsBedrock] = useState(false);
 
   useEffect(() => {
-    const fetchPreview = async () => {
+    let cancelled = false;
+
+    const poll = async () => {
       try {
-        const res = await fetch(`/api/preview/${jobId}`);
-        if (!res.ok) throw new Error("Failed to load preview");
-        const data = await res.json();
-        setPreviewData(data);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to load preview");
-      } finally {
-        setLoading(false);
+        const res = await fetch(`/api/status/${jobId}`);
+        // status endpoint returns SSE — use preview endpoint to check readiness
+      } catch {
+        // ignore
       }
+
+      // Poll the preview endpoint until bluemap_ready or fallback
+      const check = async () => {
+        try {
+          const res = await fetch(`/api/bluemap/${jobId}`);
+          if (res.ok) {
+            if (!cancelled) setState("ready");
+            return true;
+          }
+          if (res.status === 404) {
+            // Check if bedrock world (no BlueMap support)
+            const previewRes = await fetch(`/api/preview/${jobId}`);
+            if (previewRes.ok) {
+              const data = await previewRes.json();
+              if (data?.status === "completed" || data?.world_path) {
+                if (!cancelled) setState("unavailable");
+                return true;
+              }
+            }
+          }
+        } catch {
+          // ignore, retry
+        }
+        return false;
+      };
+
+      let attempts = 0;
+      const timer = setInterval(async () => {
+        attempts++;
+        const done = await check();
+        if (done || cancelled || attempts > 60) {
+          clearInterval(timer);
+          if (!done && !cancelled) setState("unavailable");
+        }
+      }, 3000);
+
+      // Cleanup on unmount
+      return () => {
+        cancelled = true;
+        clearInterval(timer);
+      };
     };
-    fetchPreview();
+
+    const cleanup = poll();
+    return () => {
+      cancelled = true;
+      cleanup.then((fn) => fn?.());
+    };
   }, [jobId]);
 
-  if (loading) {
+  if (state === "loading") {
     return (
-      <div className="flex items-center justify-center h-[500px] bg-gray-100 rounded-xl">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 text-[#5B8C3E] animate-spin mx-auto mb-2" />
-          <p className="text-gray-500">Loading 3D preview...</p>
-        </div>
+      <div className="flex flex-col items-center justify-center h-[600px] bg-gray-100 rounded-xl gap-4">
+        <Loader2 className="h-8 w-8 text-[#5B8C3E] animate-spin" />
+        <p className="text-gray-600 font-medium">Rendering interactive map preview…</p>
+        <p className="text-sm text-gray-400">This may take a minute for larger areas.</p>
       </div>
     );
   }
 
-  if (error || !previewData) {
+  if (state === "unavailable") {
     return (
-      <div className="flex items-center justify-center h-[500px] bg-gray-100 rounded-xl">
-        <p className="text-gray-500">{error || "No preview available"}</p>
+      <div className="flex flex-col items-center justify-center h-[300px] bg-gray-100 rounded-xl gap-3">
+        <p className="text-gray-500 font-medium">Interactive preview not available</p>
+        <p className="text-sm text-gray-400">
+          {isBedrock
+            ? "BlueMap preview is only available for Java Edition worlds."
+            : "The preview could not be rendered. Your world file is still ready to download."}
+        </p>
       </div>
     );
   }
-
-  const cameraPositions = {
-    perspective: [previewData.width * 0.6, previewData.width * 0.4, previewData.height * 0.6] as [number, number, number],
-    top: [0, previewData.width * 0.8, 0] as [number, number, number],
-    side: [previewData.width * 0.8, previewData.width * 0.1, 0] as [number, number, number],
-  };
 
   return (
     <div>
-      <div className="flex gap-2 mb-3">
-        {(["perspective", "top", "side"] as const).map((preset) => (
-          <button
-            key={preset}
-            onClick={() => setViewPreset(preset)}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-              viewPreset === preset
-                ? "bg-[#5B8C3E] text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
-          >
-            {preset.charAt(0).toUpperCase() + preset.slice(1)}
-          </button>
-        ))}
-      </div>
-      <div className="h-[500px] bg-gradient-to-b from-[#87CEEB] to-[#B8D4E3] rounded-xl overflow-hidden border border-gray-200">
-        <Canvas camera={{ position: cameraPositions[viewPreset], fov: 50 }}>
-          <ambientLight intensity={0.6} />
-          <directionalLight position={[100, 100, 50]} intensity={0.8} />
-          <TerrainMesh data={previewData} />
-          <OrbitControls
-            enablePan
-            enableZoom
-            enableRotate
-            autoRotate
-            autoRotateSpeed={1}
-          />
-        </Canvas>
+      <div className="rounded-xl overflow-hidden border border-gray-200 shadow-sm">
+        <iframe
+          src={`/api/bluemap/${jobId}`}
+          className="w-full h-[600px] border-0"
+          title="BlueMap World Preview"
+          allow="fullscreen"
+        />
       </div>
       <p className="text-xs text-gray-400 mt-2 text-center">
-        Click and drag to rotate. Scroll to zoom. Right-click to pan.
+        Click and drag to rotate · Scroll to zoom · Right-click to pan
       </p>
       <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2 mt-3 text-center">
-        This preview shows a simplified terrain overview. Your downloaded world includes
+        This preview shows an overview render. Your downloaded world includes
         full-detail buildings, block-level roads, trees, and more.
       </p>
     </div>

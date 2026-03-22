@@ -1,9 +1,10 @@
 use axum::{
+    body::Body,
     extract::{Path, State},
-    http::StatusCode,
+    http::{header, StatusCode},
     response::{
         sse::{Event, Sse},
-        IntoResponse, Json,
+        IntoResponse, Json, Response,
     },
     routing::{get, post},
     Router,
@@ -30,6 +31,8 @@ pub fn create_router(state: AppState) -> Router {
         .route("/api/status/{job_id}", get(job_status_sse))
         .route("/api/preview/{job_id}", get(get_preview))
         .route("/api/download/{job_id}", get(download))
+        .route("/api/bluemap/{job_id}", get(bluemap_index))
+        .route("/api/bluemap/{job_id}/{*path}", get(bluemap_file))
         .layer(cors)
         .layer(TraceLayer::new_for_http())
         .with_state(state)
@@ -145,6 +148,49 @@ async fn process_job(state: AppState, job_id: String) {
                 tracing::warn!("Failed to create zip: {}", e);
             }
 
+            // Run BlueMap render (Java Edition only; skip for Bedrock)
+            let is_bedrock = {
+                let store = state_clone.jobs.read().await;
+                store.get_job(&job_id_clone)
+                    .map(|j| j.request.bedrock.unwrap_or(false))
+                    .unwrap_or(false)
+            };
+
+            let bluemap_webroot = if !is_bedrock {
+                {
+                    let mut store = state_clone.jobs.write().await;
+                    store.update_job(&job_id_clone, |job| {
+                        job.status = JobStatus::GeneratingPreview;
+                        job.progress = 92.0;
+                        job.message = "Rendering interactive map preview...".to_string();
+                    });
+                }
+
+                let world_path_clone = world_path.clone();
+                let cache_dir = state_clone.config.bluemap_cache_dir.clone();
+                let job_id_bm = job_id_clone.clone();
+                let bm_result = tokio::task::spawn_blocking(move || {
+                    crate::bluemap::render_world(&world_path_clone, &job_id_bm, &cache_dir)
+                }).await;
+
+                match bm_result {
+                    Ok(Ok(webroot)) => {
+                        tracing::info!("BlueMap render complete: {}", webroot.display());
+                        Some(webroot.to_string_lossy().to_string())
+                    }
+                    Ok(Err(e)) => {
+                        tracing::warn!("BlueMap render failed (non-fatal): {}", e);
+                        None
+                    }
+                    Err(e) => {
+                        tracing::warn!("BlueMap task panicked (non-fatal): {}", e);
+                        None
+                    }
+                }
+            } else {
+                None
+            };
+
             {
                 let mut store = state_clone.jobs.write().await;
                 store.update_job(&job_id_clone, |job| {
@@ -152,6 +198,7 @@ async fn process_job(state: AppState, job_id: String) {
                     job.progress = 100.0;
                     job.message = "World generation complete!".to_string();
                     job.world_path = Some(world_path.to_string_lossy().to_string());
+                    job.bluemap_webroot = bluemap_webroot.clone();
                 });
             }
         }
@@ -407,5 +454,79 @@ async fn download(
         None => {
             (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "Job not found"}))).into_response()
         }
+    }
+}
+
+// Serve BlueMap static files (/api/bluemap/{job_id}/ and /api/bluemap/{job_id}/{*path})
+
+async fn bluemap_index(
+    Path(job_id): Path<String>,
+    State(state): State<AppState>,
+) -> Response {
+    serve_bluemap_file(&state, &job_id, "index.html").await
+}
+
+async fn bluemap_file(
+    Path((job_id, file_path)): Path<(String, String)>,
+    State(state): State<AppState>,
+) -> Response {
+    serve_bluemap_file(&state, &job_id, &file_path).await
+}
+
+async fn serve_bluemap_file(state: &AppState, job_id: &str, file_path: &str) -> Response {
+    let webroot = {
+        let store = state.jobs.read().await;
+        store.get_job(job_id).and_then(|j| j.bluemap_webroot.clone())
+    };
+
+    let webroot = match webroot {
+        Some(w) => std::path::PathBuf::from(w),
+        None => {
+            return (StatusCode::NOT_FOUND, "BlueMap preview not available").into_response();
+        }
+    };
+
+    // Prevent path traversal
+    let safe_path = file_path.trim_start_matches('/');
+    let full_path = webroot.join(safe_path);
+
+    // Ensure path stays within webroot
+    let canonical_webroot = match webroot.canonicalize() {
+        Ok(p) => p,
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "Webroot unavailable").into_response(),
+    };
+    let canonical_full = match full_path.canonicalize() {
+        Ok(p) => p,
+        Err(_) => return (StatusCode::NOT_FOUND, "File not found").into_response(),
+    };
+    if !canonical_full.starts_with(&canonical_webroot) {
+        return (StatusCode::FORBIDDEN, "Access denied").into_response();
+    }
+
+    match tokio::fs::read(&canonical_full).await {
+        Ok(bytes) => {
+            let mime = mime_for_path(&canonical_full);
+            Response::builder()
+                .status(StatusCode::OK)
+                .header(header::CONTENT_TYPE, mime)
+                .body(Body::from(bytes))
+                .unwrap()
+        }
+        Err(_) => (StatusCode::NOT_FOUND, "File not found").into_response(),
+    }
+}
+
+fn mime_for_path(path: &std::path::Path) -> &'static str {
+    match path.extension().and_then(|e| e.to_str()) {
+        Some("html") => "text/html; charset=utf-8",
+        Some("js") => "application/javascript",
+        Some("mjs") => "application/javascript",
+        Some("css") => "text/css",
+        Some("json") => "application/json",
+        Some("png") => "image/png",
+        Some("svg") => "image/svg+xml",
+        Some("gz") => "application/gzip",
+        Some("wasm") => "application/wasm",
+        _ => "application/octet-stream",
     }
 }

@@ -4,6 +4,7 @@ pub struct AppConfig {
     pub redis_url: Option<String>,
     pub data_dir: PathBuf,
     pub max_area_km2: f64,
+    pub bluemap_cache_dir: PathBuf,
 }
 
 impl AppConfig {
@@ -15,6 +16,9 @@ impl AppConfig {
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(100.0),
+            bluemap_cache_dir: PathBuf::from(
+                std::env::var("BLUEMAP_CACHE_DIR").unwrap_or_else(|_| "/app/bluemap-cache".to_string())
+            ),
         }
     }
 }

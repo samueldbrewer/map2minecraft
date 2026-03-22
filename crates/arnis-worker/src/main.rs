@@ -2,6 +2,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+mod bluemap;
 mod config;
 mod jobs;
 mod preview;

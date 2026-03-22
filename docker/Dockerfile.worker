@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     cmake \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy workspace manifests and lock file first for better layer caching
@@ -41,21 +42,28 @@ RUN touch crates/arnis-core/src/lib.rs crates/arnis-worker/src/main.rs
 # Build the worker
 RUN cargo build --release -p arnis-worker
 
+# Download BlueMap CLI jar in builder stage (cached layer)
+RUN curl -fL -o /tmp/bluemap.jar \
+    https://github.com/BlueMap-Minecraft/BlueMap/releases/download/v5.16/bluemap-5.16-cli.jar
+
 # Runtime stage
 FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     libssl3 \
+    openjdk-21-jre-headless \
     && rm -rf /var/lib/apt/lists/*
 
 # Create data directories for world files and tile cache
-RUN mkdir -p /data/worlds /data/tile-cache
+RUN mkdir -p /data/worlds /data/tile-cache /app/bluemap-cache
 
 COPY --from=builder /app/target/release/arnis-worker /usr/local/bin/arnis-worker
+COPY --from=builder /tmp/bluemap.jar /usr/local/bin/bluemap.jar
 
 ENV DATA_DIR=/data/worlds
 ENV TILE_CACHE_DIR=/data/tile-cache
+ENV BLUEMAP_CACHE_DIR=/app/bluemap-cache
 ENV RUST_LOG=arnis_worker=info,tower_http=info
 
 EXPOSE 8080
