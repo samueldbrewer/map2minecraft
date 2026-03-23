@@ -19,11 +19,35 @@ pub fn render_world(world_path: &Path, _job_id: &str, cache_dir: &Path) -> Resul
         ])
         .output();
 
+    // Debug: verify world structure before configuring BlueMap
+    eprintln!("[BlueMap] World path: {}", world_path.display());
+    eprintln!("[BlueMap] level.dat exists: {}", world_path.join("level.dat").exists());
+    eprintln!("[BlueMap] region/ exists: {}", world_path.join("region").exists());
+    if let Ok(entries) = std::fs::read_dir(world_path) {
+        eprintln!("[BlueMap] World dir contents:");
+        for entry in entries.flatten() {
+            let meta = std::fs::metadata(entry.path());
+            let size = meta.as_ref().map(|m| m.len()).unwrap_or(0);
+            let is_dir = meta.map(|m| m.is_dir()).unwrap_or(false);
+            eprintln!("  {} {}{}", if is_dir { "DIR " } else { "FILE" },
+                entry.file_name().to_string_lossy(),
+                if !is_dir { format!(" ({}B)", size) } else { String::new() });
+        }
+    } else {
+        eprintln!("[BlueMap] WARNING: Cannot read world dir!");
+    }
+
     // Step 2: Patch the generated configs
     patch_core_conf(&config_dir, cache_dir)?;
     patch_webapp_conf(&config_dir, &webroot)?;
     patch_storage_conf(&config_dir, &webroot)?;
     patch_map_configs(&config_dir, world_path)?;
+
+    // Debug: show what overworld.conf looks like after patching
+    let overworld_conf = config_dir.join("maps").join("overworld.conf");
+    if let Ok(content) = std::fs::read_to_string(&overworld_conf) {
+        eprintln!("[BlueMap] overworld.conf:\n{}", content);
+    }
 
     // Step 3: Render + generate webapp
     let output = Command::new("java")
