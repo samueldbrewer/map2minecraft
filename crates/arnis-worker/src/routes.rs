@@ -463,7 +463,67 @@ async fn bluemap_index(
     Path(job_id): Path<String>,
     State(state): State<AppState>,
 ) -> Response {
-    serve_bluemap_file(&state, &job_id, "index.html").await
+    let webroot = {
+        let store = state.jobs.read().await;
+        store.get_job(&job_id).and_then(|j| j.bluemap_webroot.clone())
+    };
+
+    let webroot = match webroot {
+        Some(w) => std::path::PathBuf::from(w),
+        None => {
+            return (StatusCode::NOT_FOUND, "BlueMap preview not available").into_response();
+        }
+    };
+
+    let index_path = webroot.join("index.html");
+    match tokio::fs::read_to_string(&index_path).await {
+        Ok(html) => {
+            // Inject <base> tag so relative asset paths resolve under /api/bluemap/{job_id}/
+            let base_tag = format!("<base href=\"/api/bluemap/{}/\">", job_id);
+            let patched = if html.contains("<head>") {
+                html.replacen("<head>", &format!("<head>{}", base_tag), 1)
+            } else if html.contains("<HEAD>") {
+                html.replacen("<HEAD>", &format!("<HEAD>{}", base_tag), 1)
+            } else {
+                format!("{}{}", base_tag, html)
+            };
+
+            Response::builder()
+                .status(StatusCode::OK)
+                .header(header::CONTENT_TYPE, "text/html; charset=utf-8")
+                .body(Body::from(patched))
+                .unwrap()
+        }
+        Err(_) => {
+            // List what files ARE in the webroot for debugging
+            let files = list_dir_recursive(&webroot, 3);
+            let msg = format!("index.html not found in webroot.\nFiles in {}:\n{}", webroot.display(), files);
+            tracing::warn!("{}", msg);
+            (StatusCode::NOT_FOUND, msg).into_response()
+        }
+    }
+}
+
+fn list_dir_recursive(dir: &std::path::Path, depth: usize) -> String {
+    let mut out = String::new();
+    if depth == 0 { return out; }
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let name = path.file_name().unwrap_or_default().to_string_lossy();
+            if path.is_dir() {
+                out.push_str(&format!("  {}/\n", name));
+                let sub = list_dir_recursive(&path, depth - 1);
+                for line in sub.lines() {
+                    out.push_str(&format!("    {}\n", line));
+                }
+            } else {
+                let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+                out.push_str(&format!("  {} ({}B)\n", name, size));
+            }
+        }
+    }
+    out
 }
 
 async fn bluemap_file(

@@ -35,13 +35,32 @@ pub fn render_world(world_path: &Path, _job_id: &str, cache_dir: &Path) -> Resul
         .output()
         .map_err(|e| format!("Failed to launch BlueMap: {e}"))?;
 
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // Log BlueMap output for debugging
+    if !stdout.is_empty() {
+        eprintln!("[BlueMap stdout] {}", stdout);
+    }
+    if !stderr.is_empty() {
+        eprintln!("[BlueMap stderr] {}", stderr);
+    }
+
     if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let stdout = String::from_utf8_lossy(&output.stdout);
         return Err(format!(
             "BlueMap render failed (exit {}):\nstdout: {}\nstderr: {}",
             output.status, stdout, stderr
         ));
+    }
+
+    // Log webroot contents for debugging
+    eprintln!("[BlueMap] Webroot contents:");
+    if let Ok(entries) = std::fs::read_dir(&webroot) {
+        for entry in entries.flatten() {
+            let meta = std::fs::metadata(entry.path());
+            let size = meta.map(|m| m.len()).unwrap_or(0);
+            eprintln!("  {} ({}B)", entry.file_name().to_string_lossy(), size);
+        }
     }
 
     Ok(webroot)
