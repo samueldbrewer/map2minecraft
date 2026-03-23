@@ -23,6 +23,16 @@ pub fn render_world(world_path: &Path, _job_id: &str, cache_dir: &Path) -> Resul
     eprintln!("[BlueMap] World path: {}", world_path.display());
     eprintln!("[BlueMap] level.dat exists: {}", world_path.join("level.dat").exists());
     eprintln!("[BlueMap] region/ exists: {}", world_path.join("region").exists());
+    if let Ok(entries) = std::fs::read_dir(world_path.join("region")) {
+        let mca_files: Vec<_> = entries.flatten()
+            .filter(|e| e.path().extension().map(|x| x == "mca").unwrap_or(false))
+            .collect();
+        eprintln!("[BlueMap] .mca files: {}", mca_files.len());
+        for f in &mca_files {
+            let size = std::fs::metadata(f.path()).map(|m| m.len()).unwrap_or(0);
+            eprintln!("  {} ({}B)", f.file_name().to_string_lossy(), size);
+        }
+    }
     if let Ok(entries) = std::fs::read_dir(world_path) {
         eprintln!("[BlueMap] World dir contents:");
         for entry in entries.flatten() {
@@ -49,12 +59,12 @@ pub fn render_world(world_path: &Path, _job_id: &str, cache_dir: &Path) -> Resul
         eprintln!("[BlueMap] overworld.conf:\n{}", content);
     }
 
-    // Step 3: Render + generate webapp
+    // Step 3: Force render + generate webapp
     let output = Command::new("java")
         .args([
             "-jar", "/usr/local/bin/bluemap.jar",
             "-c", config_dir.to_str().unwrap(),
-            "-r", "-g",
+            "-f", "-g",
         ])
         .output()
         .map_err(|e| format!("Failed to launch BlueMap: {e}"))?;
