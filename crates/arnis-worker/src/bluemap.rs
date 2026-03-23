@@ -191,6 +191,12 @@ fn patch_map_configs(config_dir: &Path, world_path: &Path) -> Result<(), String>
                 patched = format!("{}world: \"{}\"{}",
                     before, world_path.display(), after);
             }
+
+        // arnis-core worlds have no light data — tell BlueMap to render anyway
+        patched = patched.replace(
+            "ignore-missing-light-data: false",
+            "ignore-missing-light-data: true",
+        );
         }
 
         write_file(&overworld, &patched)?;
