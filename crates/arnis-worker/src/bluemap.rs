@@ -87,6 +87,14 @@ pub fn render_world(world_path: &Path, _job_id: &str, cache_dir: &Path) -> Resul
         ));
     }
 
+    // Log settings.json for debugging
+    if let Ok(settings) = std::fs::read_to_string(webroot.join("settings.json")) {
+        eprintln!("[BlueMap] webroot settings.json: {}", settings);
+    }
+    if let Ok(map_settings) = std::fs::read_to_string(webroot.join("maps").join("overworld").join("settings.json")) {
+        eprintln!("[BlueMap] maps/overworld/settings.json: {}", map_settings);
+    }
+
     // Log webroot contents for debugging
     eprintln!("[BlueMap] Webroot contents:");
     if let Ok(entries) = std::fs::read_dir(&webroot) {

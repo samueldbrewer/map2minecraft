@@ -587,6 +587,9 @@ fn mime_for_path(path: &std::path::Path) -> &'static str {
         Some("svg") => "image/svg+xml",
         Some("gz") => "application/gzip",
         Some("wasm") => "application/wasm",
+        Some("dat") => "application/octet-stream",
+        Some("webp") => "image/webp",
+        Some("jpg") | Some("jpeg") => "image/jpeg",
         _ => "application/octet-stream",
     }
 }

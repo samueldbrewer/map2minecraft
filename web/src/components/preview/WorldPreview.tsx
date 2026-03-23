@@ -100,7 +100,7 @@ export function WorldPreview({ jobId }: Props) {
     <div>
       <div className="rounded-xl overflow-hidden border border-gray-200 shadow-sm">
         <iframe
-          src={`/api/bluemap/${jobId}`}
+          src={`/api/bluemap/${jobId}/`}
           className="w-full h-[600px] border-0"
           title="BlueMap World Preview"
           allow="fullscreen"
