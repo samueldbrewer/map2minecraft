@@ -64,7 +64,7 @@ pub fn render_world(world_path: &Path, _job_id: &str, cache_dir: &Path) -> Resul
         .args([
             "-jar", "/usr/local/bin/bluemap.jar",
             "-c", config_dir.to_str().unwrap(),
-            "-f", "-g",
+            "-r", "-f", "-g",
         ])
         .output()
         .map_err(|e| format!("Failed to launch BlueMap: {e}"))?;
@@ -96,6 +96,29 @@ pub fn render_world(world_path: &Path, _job_id: &str, cache_dir: &Path) -> Resul
             eprintln!("  {} ({}B)", entry.file_name().to_string_lossy(), size);
         }
     }
+
+    // Log maps/ directory (tile data)
+    let maps_dir = webroot.join("maps");
+    eprintln!("[BlueMap] maps/ directory:");
+    fn log_dir(dir: &std::path::Path, prefix: &str) {
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let p = entry.path();
+                let name = entry.file_name().to_string_lossy().to_string();
+                if p.is_dir() {
+                    let count = std::fs::read_dir(&p).map(|e| e.count()).unwrap_or(0);
+                    eprintln!("{}{}/ ({} entries)", prefix, name, count);
+                    if prefix.len() < 8 { // limit depth
+                        log_dir(&p, &format!("{}  ", prefix));
+                    }
+                } else {
+                    let size = std::fs::metadata(&p).map(|m| m.len()).unwrap_or(0);
+                    eprintln!("{}{} ({}B)", prefix, name, size);
+                }
+            }
+        }
+    }
+    log_dir(&maps_dir, "  ");
 
     Ok(webroot)
 }
