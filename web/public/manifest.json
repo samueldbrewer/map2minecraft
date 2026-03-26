@@ -1,0 +1,16 @@
+{
+  "name": "Map2Minecraft",
+  "short_name": "Map2MC",
+  "description": "Turn any place on Earth into a playable Minecraft world",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F5F5F0",
+  "theme_color": "#5B8C3E",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
