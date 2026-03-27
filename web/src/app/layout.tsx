@@ -7,7 +7,7 @@ import { Footer } from "@/components/layout/Footer";
 
 const inter = Inter({ subsets: ["latin"] });
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://www.map2minecraft.com";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://map2minecraft.com";
 
 export const metadata: Metadata = {
   title: "Map2Minecraft - Turn Any Place Into a Minecraft World",

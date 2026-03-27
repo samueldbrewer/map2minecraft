@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { cities } from "@/lib/cities";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://www.map2minecraft.com";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://map2minecraft.com";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const cityPages = cities.map((city) => ({

@@ -3,4 +3,4 @@ Allow: /
 Disallow: /api/
 Disallow: /create/success
 
-Sitemap: https://www.map2minecraft.com/sitemap.xml
+Sitemap: https://map2minecraft.com/sitemap.xml

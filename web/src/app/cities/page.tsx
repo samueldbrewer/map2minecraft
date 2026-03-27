@@ -3,7 +3,7 @@ import Link from "next/link";
 import { MapPin, ArrowRight } from "lucide-react";
 import { cities, continents } from "@/lib/cities";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://www.map2minecraft.com";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://map2minecraft.com";
 
 export const metadata: Metadata = {
   title: "Minecraft City Maps — Download Real-World Cities | Map2Minecraft",

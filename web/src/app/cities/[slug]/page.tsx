@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { MapPin, Download, Box, ArrowRight } from "lucide-react";
 import { cities, getCityBySlug } from "@/lib/cities";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://www.map2minecraft.com";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://map2minecraft.com";
 
 export async function generateStaticParams() {
   return cities.map((city) => ({ slug: city.slug }));
